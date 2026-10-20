@@ -26,20 +26,67 @@ namespace WindowsFormsApplication2
 
         public void InitUserInfo()
         {
+            //修改10.20
             userInfo.Clear();
             //1. 从数据库中取出已注册的用户
-            DataTable dt;
-            dt = dbFace.GetDataTableBySql("select TBL_student.StudID, TBL_student.StuName, TBL_face.FaceCode from TBL_student, TBL_face where TBL_student.StudID=TBL_face.StuID");
-            int count = dt.Rows.Count;
+            //DataTable dt;
+            //dt = dbFace.GetDataTableBySql("select tbl_student.StuID, tbl_student.StuName, tbl_face.FaceCode from tbl_student, tbl_face where tbl_student.StuID=tbl_face.StuID");
+            //int count = dt.Rows.Count;
+            //if(count > 0)
+            //{
+            //    for(int i=0;i<count;i++)
+            //    {
+            //        userInfo[i] = new Dictionary<string, string>(){{"ID",(dt.Rows[i]["StuID"]).ToString()},
+            //            {"Name",(dt.Rows[i]["StuName"]).ToString()}
+            //        };
+            //    }
+            //}
+            studentDataContext context = new studentDataContext();
+            var query = from face in context.TBL_face
+                        join stu in context.TBL_student
+                        on face.StuID equals stu.StudID
+                        where face.FaceCode != null
+                        select new
+                        {
+                            StuID = stu.StudID,
+                            StuName = stu.StuName,
+                            FaceCode = face.FaceCode
+                        };
+
+            uint count = (uint)query.Count();
             if (count > 0)
             {
-                for (int i = 0; i < count; i++)
+                int codeLen = bioFPCtrl1.GetFaceCodeLen();
+                byte[] faceCode = new byte[count * codeLen];
+                uint index = 0;
+                uint[] Id = new uint[count];
+                foreach (var data in query)
                 {
-                    userInfo[i] = new Dictionary<string, string>(){{"ID",(dt.Rows[i]["StudID"]).ToString()},
-                        {"Name",(dt.Rows[i]["StuName"]).ToString()}
+                    Id[index] = index;
+                    userInfo[(int)index] = new Dictionary<string, string>()
+                    {
+                            {"ID",data.StuID.ToString()},
+                            {"Name",data.StuName.ToString()}
                     };
+                    data.FaceCode.ToArray().CopyTo(faceCode, (index++) * codeLen);
                 }
+                bioFPCtrl1.SetFaceCode(count, faceCode, Id);
             }
+
+            //userInfo.Clear();
+            ////1. 从数据库中取出已注册的用户
+            //DataTable dt;
+            //dt = dbFace.GetDataTableBySql("select TBL_student.StudID, TBL_student.StuName, TBL_face.FaceCode from TBL_student, TBL_face where TBL_student.StudID=TBL_face.StuID");
+            //int count = dt.Rows.Count;
+            //if (count > 0)
+            //{
+            //    for (int i = 0; i < count; i++)
+            //    {
+            //        userInfo[i] = new Dictionary<string, string>(){{"ID",(dt.Rows[i]["StudID"]).ToString()},
+            //            {"Name",(dt.Rows[i]["StuName"]).ToString()}
+            //        };
+            //    }
+            //}
         }
         public frmManage()
         {
@@ -59,7 +106,14 @@ namespace WindowsFormsApplication2
 
         private void button4_Click(object sender, EventArgs e)
         {
-
+            if (txtID.Text.Length > 0)
+            {
+                bioFPCtrl1.Enroll();
+            }
+            else
+            {
+                MessageBox.Show("请输入学号");
+            }
         }
 
         private void radWoman_CheckedChanged(object sender, EventArgs e)
@@ -147,17 +201,124 @@ namespace WindowsFormsApplication2
 
         private void btn_seek_Click(object sender, EventArgs e)
         {
-
+            if (btn_seek.Text == "识别")
+            {
+                bioFPCtrl1.Identify();
+                btn_seek.Text = "停止";
+            }
+            else
+            {
+                bioFPCtrl1.Cancel();
+                btn_seek.Text = "识别";
+            }
         }
 
         private void bioFPCtrl1_EnrollNotify(object sender, int result, int face_index, uint face_quality, byte[] face_template, Bitmap face_image)
         {
+            if (result > 0)
+            {
+                string userID = txtID.Text;
+                studentDataContext context = new studentDataContext();
 
+                //1、插入学生信息至 TBL_student 表
+                TBL_student stu = new TBL_student();
+                {
+                    stu.StudID = userID;
+                    stu.StuName = txtName.Text;
+                    stu.Sex = radMan.Checked ? "男" : "女";
+                    stu.Class = "202307Z";
+                    stu.CreateTime = DateTime.Now.ToString();
+                }
+                context.TBL_student.InsertOnSubmit(stu);
+
+                //2、插入人脸特征数据至 TBL_face 表
+                TBL_face face = new TBL_face();
+                {
+                    face.StuID = userID;
+                    face.FaceCode = face_template;
+                }
+                context.TBL_face.InsertOnSubmit(face);
+                context.SubmitChanges();
+
+                //保存图像
+                face_image.Save(userID + ".jpg");
+                MciPlaySound.PlaySound("sound\\zccg.wav", SND_FILENAME | SND_ASYNC);
+
+                //加载编码
+                var query = from TBL_face n in context.TBL_face
+                            where n.TBL_student.StudID == n.StuID
+                                  && n.FaceCode != null
+                            select new
+                            {
+                                StuID = n.TBL_student.StudID,
+                                StuName = n.TBL_student.StuName,
+                                Sex = n.TBL_student.Sex,
+                                FaceCode = n.FaceCode
+                            };
+
+                uint count = (uint)query.Count();
+                if (count > 0)
+                {
+                    byte[] faceCode = new byte[count * face_template.Length];
+                    uint index = 0;
+                    uint[] Id = new uint[count];
+
+                    foreach (var data in query)
+                    {
+                        Id[index] = index;
+                        userInfo[(int)index] = new Dictionary<string, string>()
+                {
+                    {"ID",data.StuID.ToString()},
+                    {"Name",data.StuName.ToString()}
+                };
+
+                        data.FaceCode.ToArray().CopyTo(
+                            faceCode, (index++) * face_template.Length);
+                    }
+
+                    bioFPCtrl1.SetFaceCode(count, faceCode, Id);
+                }
+            }
+            else
+            {
+                //重复注册
+                if (result == FacePlatformCtrl.BioFPCtrl.BioFP_ERROR_ENROLL_DUPLICATE)
+                {
+                    if (face_index > -1)
+                    {
+                        MessageBox.Show("人脸已存在", this.Text,
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
         }
 
         private void bioFPCtrl1_IdentifyNotify(object sender, int result, int face_index)
         {
+            TimeSpan span = DateTime.Now - identifyFinishTimestamp;
+            if (span.TotalMilliseconds >= IDENTIFY_SPAN_LIMIT)
+            {
+                if (result > 0)
+                {
+                    identifyFinishTimestamp = DateTime.Now;
+                    MciPlaySound.PlaySound("sound\\sbcg.wav", SND_FILENAME | SND_ASYNC);
 
+                    if (face_index >= 0)
+                    {
+                        txtID.Text = userInfo[face_index]["ID"];
+                        txtName.Text = userInfo[face_index]["Name"];
+                        //txtID.Text = face_index.ToString();
+                    }
+                }
+                else
+                {
+                    if (result == FacePlatformCtrl.BioFPCtrl.BioFP_ERROR_IDENTIFY_FAILED)
+                    {
+                        identifyFinishTimestamp = DateTime.Now;
+                        MciPlaySound.PlaySound("sound\\sbsb.wav", SND_FILENAME | SND_ASYNC);
+                    }
+                }
+            }
         }
 
         private void btn_load_Click(object sender, EventArgs e)
@@ -165,6 +326,7 @@ namespace WindowsFormsApplication2
             if(btn_load.Text=="加载")
             {
                 bioFPCtrl1.ModuleLoad();
+                InitUserInfo();
                 btn_load.Text = "卸载";
             }
             else if(btn_load.Text == "卸载")
