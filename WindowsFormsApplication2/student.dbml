@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="myspl" Class="studentDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=.;Initial Catalog=myspl;Integrated Security=True" SettingsObjectName="WindowsFormsApplication2.Properties.Settings" SettingsPropertyName="mysplConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.TBL_student" Member="TBL_student">
+    <Type Name="TBL_student">
+      <Column Name="ID" Type="System.Int64" DbType="BigInt NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="StudID" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="StuName" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="Class" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Sex" Type="System.String" DbType="VarChar(6)" CanBeNull="true" />
+      <Column Name="CreateTime" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Association Name="TBL_student_TBL_face" Member="TBL_face" ThisKey="StudID" OtherKey="StuID" Type="TBL_face" />
+    </Type>
+  </Table>
+  <Table Name="dbo.TBL_face" Member="TBL_face">
+    <Type Name="TBL_face">
+      <Column Name="ID" Type="System.Int64" DbType="BigInt NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="StuID" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="FaceCode" Type="System.Data.Linq.Binary" DbType="Image" CanBeNull="true" UpdateCheck="Never" />
+      <Association Name="TBL_student_TBL_face" Member="TBL_student" ThisKey="StuID" OtherKey="StudID" Type="TBL_student" IsForeignKey="true" />
+    </Type>
+  </Table>
+</Database>
