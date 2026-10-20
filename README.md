@@ -2,8 +2,6 @@
 
 一个使用 C#、Windows Forms 和 SQL Server 的桌面项目，解决方案名称为 `WindowsFormsApplication2`，目标框架为 **.NET Framework 4.5.2**，原始开发环境为 Visual Studio 2015。
 
-仓库同时保留原有的 `class1_project` 项目（根目录的 `class1_project.slnx`、`class1_project.csproj`、`Form1.*` 等，目标框架为 .NET Framework 4.7.2）。本文说明本次导入的 `WindowsFormsApplication2` 项目；运行该项目时请打开 `WindowsFormsApplication2.sln`。
-
 ## 当前功能
 
 - 主界面显示当前时间，并提供管理界面入口。
